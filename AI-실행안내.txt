@@ -1,0 +1,15 @@
+AI 자동등록 기능을 사용하려면 서버를 켜기 전에 OpenAI API 키를 환경변수로 설정해야 합니다.
+
+PowerShell 예시:
+
+$env:OPENAI_API_KEY="여기에_API_키_입력"
+npm start
+
+선택 사항:
+
+$env:OPENAI_MODEL="gpt-4o-mini"
+
+주의:
+- API 키는 index.html에 넣지 마세요.
+- 브라우저에 API 키가 노출되지 않도록 server.js에서만 사용합니다.
+- 작품 링크만으로 플랫폼 정보가 안 읽히는 경우가 있으니, 작품 소개/태그를 함께 붙여넣으면 분류 정확도가 좋아집니다.

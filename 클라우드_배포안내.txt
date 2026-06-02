@@ -1,0 +1,57 @@
+목표:
+컴퓨터가 꺼져도 웹소설 검색 사이트와 데이터베이스가 계속 유지되게 만들기.
+
+구조:
+- 웹사이트/서버: Render
+- 데이터베이스: Supabase Postgres
+- AI 키: Render 환경변수
+
+1. Supabase 프로젝트 만들기
+https://supabase.com 에 가입하고 새 프로젝트를 만드세요.
+
+2. Supabase 테이블 만들기
+Supabase 왼쪽 메뉴에서 SQL Editor를 열고, 이 파일 내용을 실행하세요.
+
+supabase-schema.sql
+
+3. Supabase 환경변수 확인
+Supabase Project Settings > API에서 아래 값을 확인하세요.
+
+- Project URL -> SUPABASE_URL
+- service_role secret key -> SUPABASE_SERVICE_ROLE_KEY
+
+주의:
+service_role key는 절대 브라우저 코드나 공개 화면에 넣으면 안 됩니다.
+Render 환경변수에만 넣어야 합니다.
+
+4. Render에 배포
+https://render.com 에 가입한 뒤 새 Web Service를 만드세요.
+
+설정:
+- Runtime: Node
+- Build Command: 비워두기
+- Start Command: npm start
+- Root Directory: outputs
+
+환경변수:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- OPENAI_API_KEY
+- OPENAI_MODEL = gpt-4o-mini
+
+5. 배포 후 사이트 주소
+Render가 https://프로젝트명.onrender.com 주소를 만들어줍니다.
+그 주소가 컴퓨터를 꺼도 접속 가능한 제출용/공유용 사이트 주소입니다.
+
+6. 기존 로컬 데이터 옮기기
+현재 data/novels.json에 들어 있는 작품은 아래 명령으로 Supabase에 옮길 수 있습니다.
+
+PowerShell 예시:
+
+$env:SUPABASE_URL="Supabase Project URL"
+$env:SUPABASE_SERVICE_ROLE_KEY="Supabase service_role secret key"
+npm run migrate:supabase
+
+참고:
+SUPABASE_URL과 SUPABASE_SERVICE_ROLE_KEY가 없으면 server.js는 자동으로 로컬 JSON DB를 사용합니다.
+그래서 개발 중에는 기존처럼 localhost:3000으로 계속 테스트할 수 있습니다.
