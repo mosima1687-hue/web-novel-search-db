@@ -105,15 +105,17 @@
           <select name="world" required class="w-full border rounded-lg p-3"></select>
         </label>
 
-        <label class="block">
-          <span class="block mb-2 font-medium">핵심 설정</span>
-          <select name="setting" required class="w-full border rounded-lg p-3"></select>
-        </label>
+        <fieldset class="block">
+          <legend class="block mb-2 font-medium">핵심 설정</legend>
+          <div id="formSettingChecks" class="grid grid-cols-2 gap-2 border rounded-lg p-3 text-sm"></div>
+          <p class="mt-1 text-xs text-zinc-500">최대 3개까지 선택할 수 있습니다.</p>
+        </fieldset>
 
-        <label class="block">
-          <span class="block mb-2 font-medium">캐릭터 설정</span>
-          <select name="character" required class="w-full border rounded-lg p-3"></select>
-        </label>
+        <fieldset class="block">
+          <legend class="block mb-2 font-medium">캐릭터 설정</legend>
+          <div id="formCharacterChecks" class="grid grid-cols-2 gap-2 border rounded-lg p-3 text-sm"></div>
+          <p class="mt-1 text-xs text-zinc-500">최대 3개까지 선택할 수 있습니다.</p>
+        </fieldset>
 
         <label class="block md:col-span-2">
           <span class="block mb-2 font-medium">키워드</span>
@@ -315,6 +317,29 @@
       `).join("");
     }
 
+    function selectedValues(selector) {
+      return [...document.querySelectorAll(`${selector}:checked`)].map(input => input.value);
+    }
+
+    function setCheckedValues(selector, values) {
+      const selected = new Set(values || []);
+      document.querySelectorAll(selector).forEach(input => {
+        input.checked = selected.has(input.value);
+      });
+    }
+
+    function limitCheckboxGroup(selector, limit) {
+      document.querySelectorAll(selector).forEach(input => {
+        input.addEventListener("change", () => {
+          const checked = selectedValues(selector);
+          if (checked.length > limit) {
+            input.checked = false;
+            alert(`최대 ${limit}개까지 선택할 수 있습니다.`);
+          }
+        });
+      });
+    }
+
     function codeFrom(novel) {
       const genre = novel.genre || getGenre(novel.code);
       const world = novel.world || getWorld(novel.code);
@@ -474,8 +499,8 @@
       form.elements.serialization.value = novel.serialization || "";
       form.elements.genre.value = novel.genre || getGenre(novel.code);
       form.elements.world.value = novel.world || getWorld(novel.code);
-      form.elements.setting.value = novel.settings?.[0] || "";
-      form.elements.character.value = novel.characters?.[0] || "";
+      setCheckedValues(".formSettingCheck", novel.settings || []);
+      setCheckedValues(".formCharacterCheck", novel.characters || []);
       form.elements.keywords.value = (novel.keywords || []).join(", ");
       form.elements.description.value = novel.description || "";
     }
@@ -499,8 +524,8 @@
         serialization: data.get("serialization"),
         genre: data.get("genre"),
         world: data.get("world"),
-        settings: [data.get("setting")],
-        characters: [data.get("character")],
+        settings: selectedValues(".formSettingCheck"),
+        characters: selectedValues(".formCharacterCheck"),
         keywords: String(data.get("keywords") || "").split(",").map(value => value.trim()).filter(Boolean),
         description: data.get("description")
       };
@@ -610,11 +635,17 @@
       const id = form.elements.id.value;
       const method = id ? "PUT" : "POST";
       const url = id ? `/api/novels/${encodeURIComponent(id)}` : "/api/novels";
+      const novel = formToNovel(form);
+
+      if (novel.settings.length === 0 || novel.characters.length === 0) {
+        alert("핵심 설정과 캐릭터 설정은 각각 1개 이상 선택해주세요.");
+        return;
+      }
 
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formToNovel(form))
+        body: JSON.stringify(novel)
       });
 
       if (!response.ok) {
@@ -712,11 +743,13 @@
       fillSelect(document.getElementById("world"), worldMap, true);
       fillCheckboxes(document.getElementById("settingChecks"), settingMap, "settingCheck");
       fillCheckboxes(document.getElementById("characterChecks"), characterMap, "characterCheck");
+      fillCheckboxes(document.getElementById("formSettingChecks"), settingMap, "formSettingCheck");
+      fillCheckboxes(document.getElementById("formCharacterChecks"), characterMap, "formCharacterCheck");
+      limitCheckboxGroup(".formSettingCheck", 3);
+      limitCheckboxGroup(".formCharacterCheck", 3);
 
       fillSelect(document.querySelector('[name="genre"]'), genreMap);
       fillSelect(document.querySelector('[name="world"]'), worldMap);
-      fillSelect(document.querySelector('[name="setting"]'), settingMap);
-      fillSelect(document.querySelector('[name="character"]'), characterMap);
 
       document.getElementById("openCreateButton").addEventListener("click", openCreateModal);
       document.getElementById("openCsvButton").addEventListener("click", () => openModal("csvModal"));
