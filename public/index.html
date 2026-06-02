@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>웹소설 상세검색 시스템</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-100 min-h-screen p-4 md:p-6">
+  <main class="max-w-7xl mx-auto space-y-6">
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+        <div>
+          <h1 class="text-3xl md:text-4xl font-bold mb-2">웹소설 상세검색 시스템</h1>
+          <p class="text-zinc-600">KDC형 분류표 기반 공유 데이터베이스</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <div id="status" class="text-sm bg-zinc-100 px-4 py-2 rounded-full w-fit">서버 연결 확인 중</div>
+          <button id="openCsvButton" class="bg-zinc-200 rounded-lg px-4 py-2 font-semibold">CSV 대량 등록</button>
+          <button id="openKeywordButton" class="bg-zinc-200 rounded-lg px-4 py-2 font-semibold">설정 키워드</button>
+          <button id="openAiButton" class="bg-zinc-900 text-white rounded-lg px-4 py-2 font-semibold">AI 자동등록</button>
+          <button id="openCreateButton" class="bg-black text-white rounded-lg px-4 py-2 font-semibold">작품 등록</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <aside class="bg-white rounded-2xl shadow-sm p-5 h-fit space-y-5">
+        <h2 class="text-xl font-semibold">상세검색</h2>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">장르</span>
+          <select id="genre" class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">세계관</span>
+          <select id="world" class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <fieldset>
+          <legend class="mb-3 font-medium">핵심 설정</legend>
+          <div id="settingChecks" class="grid grid-cols-2 gap-2 text-sm"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="mb-3 font-medium">캐릭터 설정</legend>
+          <div id="characterChecks" class="grid grid-cols-2 gap-2 text-sm"></div>
+        </fieldset>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">키워드 검색</span>
+          <input id="keyword" placeholder="회귀, 능력형, 가족" class="w-full border rounded-lg p-3">
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button id="searchButton" class="bg-black text-white rounded-lg py-3 font-semibold">검색</button>
+          <button id="resetButton" class="bg-zinc-200 rounded-lg py-3 font-semibold">초기화</button>
+        </div>
+      </aside>
+
+      <section class="lg:col-span-3 space-y-5">
+        <section class="bg-white rounded-2xl shadow-sm p-5 flex justify-between items-center">
+          <h2 class="text-xl font-semibold">검색 결과</h2>
+          <div id="count" class="bg-zinc-100 px-4 py-2 rounded-full text-sm">총 0건</div>
+        </section>
+
+        <div id="results" class="space-y-4"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="novelModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <section class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white border-b p-5 flex items-center justify-between gap-4">
+        <h2 id="novelModalTitle" class="text-2xl font-bold">작품 등록</h2>
+        <button type="button" class="modalClose text-zinc-500 hover:text-black text-2xl leading-none" aria-label="닫기">&times;</button>
+      </div>
+
+      <form id="novelForm" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="hidden" name="id">
+
+        <label class="block md:col-span-2">
+          <span class="block mb-2 font-medium">작품명</span>
+          <input name="title" required class="w-full border rounded-lg p-3">
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">플랫폼</span>
+          <input name="platform" placeholder="카카오페이지, 네이버시리즈 등" class="w-full border rounded-lg p-3">
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">연재주기</span>
+          <input name="serialization" placeholder="월/수/금, 매일, 완결 등" class="w-full border rounded-lg p-3">
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">대표 장르</span>
+          <select name="genre" required class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">세계관</span>
+          <select name="world" required class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">핵심 설정</span>
+          <select name="setting" required class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">캐릭터 설정</span>
+          <select name="character" required class="w-full border rounded-lg p-3"></select>
+        </label>
+
+        <label class="block md:col-span-2">
+          <span class="block mb-2 font-medium">키워드</span>
+          <input name="keywords" placeholder="쉼표로 구분: 회귀, 서포터, 성장" class="w-full border rounded-lg p-3">
+        </label>
+
+        <label class="block md:col-span-2">
+          <span class="block mb-2 font-medium">설명</span>
+          <textarea name="description" rows="4" class="w-full border rounded-lg p-3"></textarea>
+        </label>
+
+        <div class="md:col-span-2 flex justify-between gap-3 pt-2">
+          <button type="button" id="deleteInModalButton" class="hidden bg-red-500 text-white rounded-lg px-4 py-3 font-semibold">삭제</button>
+          <div class="flex gap-3 ml-auto">
+            <button type="button" class="modalClose bg-zinc-200 rounded-lg px-4 py-3 font-semibold">닫기</button>
+            <button id="novelSubmitButton" class="bg-black text-white rounded-lg px-5 py-3 font-semibold">저장</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="csvModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <section class="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+      <div class="border-b p-5 flex items-center justify-between gap-4">
+        <h2 class="text-2xl font-bold">CSV 대량 등록</h2>
+        <button type="button" class="csvClose text-zinc-500 hover:text-black text-2xl leading-none" aria-label="닫기">&times;</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-sm text-zinc-600 leading-relaxed">
+          CSV 형식: title,genre,world,setting,character,keywords,platform,serialization,description
+          <br>
+          키워드는 | 로 구분할 수 있습니다. 플랫폼과 연재주기는 없어도 등록됩니다.
+        </p>
+        <input id="csvInput" type="file" accept=".csv" class="w-full border rounded-lg p-3">
+        <div class="flex justify-end">
+          <button type="button" class="csvClose bg-zinc-200 rounded-lg px-4 py-3 font-semibold">닫기</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="keywordModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <section class="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[92vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white border-b p-5 flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold">설정 키워드</h2>
+          <p class="text-sm text-zinc-600 mt-1">캐릭터 설정별 포함 키워드와 분류 기준</p>
+        </div>
+        <button type="button" class="keywordClose text-zinc-500 hover:text-black text-2xl leading-none" aria-label="닫기">&times;</button>
+      </div>
+
+      <div class="p-5">
+        <div class="overflow-x-auto border rounded-xl">
+          <table class="w-full min-w-[900px] border-collapse text-sm">
+            <thead>
+              <tr class="bg-sky-900 text-white">
+                <th class="border border-zinc-300 px-3 py-2 text-left w-24">코드</th>
+                <th class="border border-zinc-300 px-3 py-2 text-left w-32">보조기호</th>
+                <th class="border border-zinc-300 px-3 py-2 text-left">포함 키워드</th>
+                <th class="border border-zinc-300 px-3 py-2 text-left">분류 기준</th>
+              </tr>
+            </thead>
+            <tbody id="keywordRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="aiModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <section class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white border-b p-5 flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold">AI 자동등록</h2>
+          <p class="text-sm text-zinc-600 mt-1">작품 링크나 소개글을 바탕으로 분류 후보를 만듭니다.</p>
+        </div>
+        <button type="button" class="aiClose text-zinc-500 hover:text-black text-2xl leading-none" aria-label="닫기">&times;</button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <label class="block">
+          <span class="block mb-2 font-medium">작품 링크</span>
+          <input id="aiUrl" placeholder="https://..." class="w-full border rounded-lg p-3">
+        </label>
+
+        <label class="block">
+          <span class="block mb-2 font-medium">작품 소개/태그</span>
+          <textarea id="aiText" rows="6" placeholder="플랫폼에서 복사한 작품 소개, 태그, 연재 정보 등을 붙여넣어도 됩니다." class="w-full border rounded-lg p-3"></textarea>
+        </label>
+
+        <div class="flex flex-wrap justify-between gap-3">
+          <button id="aiAnalyzeButton" class="bg-black text-white rounded-lg px-5 py-3 font-semibold">AI 분류하기</button>
+          <button type="button" class="aiClose bg-zinc-200 rounded-lg px-4 py-3 font-semibold">닫기</button>
+        </div>
+
+        <div id="aiResultBox" class="hidden border rounded-xl p-4 bg-zinc-50 space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="text-lg font-bold">분류 후보</h3>
+            <span id="aiResultCode" class="bg-white border px-3 py-1 rounded-full text-sm"></span>
+          </div>
+          <div id="aiResultContent" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm"></div>
+          <p id="aiEvidence" class="text-sm text-zinc-600 leading-relaxed"></p>
+          <div class="flex flex-wrap justify-end gap-3">
+            <button id="aiSendToFormButton" class="bg-zinc-200 rounded-lg px-4 py-3 font-semibold">등록폼에서 수정</button>
+            <button id="aiSaveButton" class="bg-black text-white rounded-lg px-5 py-3 font-semibold">이대로 등록</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const genreMap = {
+      "11": "로맨스",
+      "12": "판타지",
+      "13": "로맨스판타지",
+      "14": "무협",
+      "15": "미스터리·스릴러",
+      "16": "공포",
+      "17": "스포츠",
+      "18": "전쟁·밀리터리",
+      "19": "라이트노벨"
+    };
+
+    const worldMap = {
+      "10": "현대",
+      "20": "시대",
+      "30": "이세계",
+      "40": "SF",
+      "50": "왕족·귀족",
+      "60": "학교·아카데미",
+      "70": "던전·헌터·게임",
+      "80": "이종족",
+      "90": "혼합"
+    };
+
+    const settingMap = {
+      "1": "회귀",
+      "2": "빙의",
+      "3": "환생",
+      "4": "성장",
+      "5": "피폐",
+      "6": "복수",
+      "7": "육아",
+      "8": "계약",
+      "9": "치유"
+    };
+
+    const characterMap = {
+      ".21": "집착형",
+      ".22": "후회형",
+      ".23": "능력형",
+      ".24": "시원형",
+      ".25": "섹시형",
+      ".26": "냉정형",
+      ".27": "병약형",
+      ".28": "보호형",
+      ".29": "성장형",
+      ".30": "악역형"
+    };
+
+    const characterKeywordRows = [
+      { code: "21", name: "집착형", keywords: "집착남, 집착녀, 광공", criteria: "특정 인물에 대한 강한 소유욕·집착이 핵심 캐릭터성인 경우" },
+      { code: "22", name: "후회형", keywords: "후회남, 후회녀, 뒤늦은 반성", criteria: "과거 행동에 대한 후회가 관계 변화의 중심인 경우" },
+      { code: "23", name: "능력형", keywords: "먼치킨, 능력캐, 천재, 재벌남녀", criteria: "능력, 지위, 재력, 재능이 핵심 매력인 경우" },
+      { code: "24", name: "시원형", keywords: "사이다남녀, 기존쎄, 통쾌형", criteria: "답답함 없이 문제를 해결하는 통쾌함이 핵심인 경우" },
+      { code: "25", name: "섹시형", keywords: "뇌섹남녀, 유혹형, 매혹형", criteria: "지적·육체적 매력이나 유혹성이 강조되는 경우" },
+      { code: "26", name: "냉정형", keywords: "냉미남녀, 무심남녀, 차가운 성격", criteria: "감정 표현이 적고 냉정한 인물성이 중심인 경우" },
+      { code: "27", name: "병약형", keywords: "병약여주, 병약남주, 허약체질", criteria: "신체적 약함이나 병약함이 인물 설정에 중요할 경우" },
+      { code: "28", name: "보호형", keywords: "다정남, 헌신남, 순정남, 보호자형", criteria: "돌봄, 헌신, 보호, 안정감이 핵심인 경우" },
+      { code: "29", name: "성장형", keywords: "성장캐, 신분차이 극복, 미성숙에서 성숙으로", criteria: "인물 자체의 변화와 성숙이 핵심인 경우" },
+      { code: "30", name: "악역형", keywords: "악녀, 흑막, 빌런, 반동인물", criteria: "악역성, 흑막성, 빌런적 매력이 중심인 경우" }
+    ];
+
+    const reverse = map => Object.fromEntries(Object.entries(map).map(([key, value]) => [value, key]));
+    const genreReverse = reverse(genreMap);
+    const worldReverse = reverse(worldMap);
+    const settingReverse = reverse(settingMap);
+    const characterReverse = reverse(characterMap);
+
+    let novels = [];
+    let currentView = [];
+    let aiCandidate = null;
+
+    function fillSelect(select, map, includeAll = false) {
+      select.innerHTML = includeAll ? '<option value="all">전체</option>' : "";
+      for (const [value, label] of Object.entries(map)) {
+        select.innerHTML += `<option value="${value}">${label}</option>`;
+      }
+    }
+
+    function fillCheckboxes(container, map, className) {
+      container.innerHTML = Object.entries(map).map(([value, label]) => `
+        <label class="flex items-center gap-2">
+          <input type="checkbox" value="${value}" class="${className}">
+          <span>${label}</span>
+        </label>
+      `).join("");
+    }
+
+    function codeFrom(novel) {
+      const genre = novel.genre || getGenre(novel.code);
+      const world = novel.world || getWorld(novel.code);
+      const setting = novel.settings?.[0] || "";
+      const character = novel.characters?.[0] || "";
+      return `${genre}${world.charAt(0)}${setting}${character}`;
+    }
+
+    function getGenre(code) {
+      return String(code || "").substring(0, 2);
+    }
+
+    function getWorld(code) {
+      return `${String(code || "").substring(2, 3)}0`;
+    }
+
+    function setStatus(text, isError = false) {
+      const status = document.getElementById("status");
+      status.textContent = text;
+      status.className = `text-sm px-4 py-2 rounded-full w-fit ${isError ? "bg-red-100 text-red-700" : "bg-zinc-100 text-zinc-700"}`;
+    }
+
+    async function loadNovels() {
+      const response = await fetch("/api/novels");
+      if (!response.ok) throw new Error("DB를 불러오지 못했습니다.");
+      novels = await response.json();
+      setStatus("공유 DB 연결됨");
+      filterNovels();
+    }
+
+    function renderNovels(data) {
+      currentView = data;
+      document.getElementById("count").textContent = `총 ${data.length}건`;
+      const container = document.getElementById("results");
+
+      if (data.length === 0) {
+        container.innerHTML = '<div class="bg-white rounded-2xl shadow-sm p-10 text-center text-zinc-500">검색 결과가 없습니다.</div>';
+        return;
+      }
+
+      container.innerHTML = data.map(novel => {
+        const genre = novel.genre || getGenre(novel.code);
+        const world = novel.world || getWorld(novel.code);
+        const code = novel.code || codeFrom(novel);
+        return `
+          <article onclick="openNovelModal('${novel.id}')" class="bg-white rounded-2xl shadow-sm p-5 cursor-pointer hover:shadow-md transition">
+            <div class="flex justify-between items-start gap-4 flex-wrap">
+              <div>
+                <h3 class="text-2xl font-bold">${escapeHtml(novel.title)}</h3>
+                <p class="text-zinc-500 mt-1">분류코드: ${escapeHtml(code)}</p>
+              </div>
+              <button onclick="event.stopPropagation(); deleteNovel('${novel.id}')" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">삭제</button>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-zinc-600">
+              <p><span class="font-semibold text-zinc-900">플랫폼:</span> ${escapeHtml(novel.platform || "미입력")}</p>
+              <p><span class="font-semibold text-zinc-900">연재주기:</span> ${escapeHtml(novel.serialization || "미입력")}</p>
+            </div>
+
+            <div class="mt-5 flex flex-wrap gap-2">
+              ${chip(genreMap[genre])}
+              ${chip(worldMap[world])}
+              ${(novel.settings || []).map(value => chip(settingMap[value])).join("")}
+              ${(novel.characters || []).map(value => chip(characterMap[value])).join("")}
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-2">
+              ${(novel.keywords || []).map(keyword => `<span class="bg-black text-white text-xs px-3 py-1 rounded-full">#${escapeHtml(keyword)}</span>`).join("")}
+            </div>
+
+            <p class="mt-5 text-zinc-700 leading-relaxed">${escapeHtml(novel.description || "설명 없음")}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function chip(text) {
+      return text ? `<span class="bg-zinc-100 px-3 py-1 rounded-full text-sm">${escapeHtml(text)}</span>` : "";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function filterNovels() {
+      const genre = document.getElementById("genre").value;
+      const world = document.getElementById("world").value;
+      const keyword = document.getElementById("keyword").value.trim().toLowerCase();
+      const selectedSettings = [...document.querySelectorAll(".settingCheck:checked")].map(el => el.value);
+      const selectedCharacters = [...document.querySelectorAll(".characterCheck:checked")].map(el => el.value);
+
+      const filtered = novels.filter(novel => {
+        const novelGenre = novel.genre || getGenre(novel.code);
+        const novelWorld = novel.world || getWorld(novel.code);
+        const haystack = [
+          novel.title,
+          novel.code,
+          novel.platform,
+          novel.serialization,
+          genreMap[novelGenre],
+          worldMap[novelWorld],
+          ...(novel.settings || []).map(value => settingMap[value]),
+          ...(novel.characters || []).map(value => characterMap[value]),
+          ...(novel.keywords || []),
+          novel.description
+        ].join(" ").toLowerCase();
+
+        return (genre === "all" || novelGenre === genre)
+          && (world === "all" || novelWorld === world)
+          && (selectedSettings.length === 0 || selectedSettings.some(value => novel.settings?.includes(value)))
+          && (selectedCharacters.length === 0 || selectedCharacters.some(value => novel.characters?.includes(value)))
+          && (!keyword || haystack.includes(keyword));
+      });
+
+      renderNovels(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById("genre").value = "all";
+      document.getElementById("world").value = "all";
+      document.getElementById("keyword").value = "";
+      document.querySelectorAll(".settingCheck, .characterCheck").forEach(el => el.checked = false);
+      renderNovels(novels);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove("hidden");
+      document.getElementById(id).classList.add("flex");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+      document.getElementById(id).classList.remove("flex");
+    }
+
+    function openCreateModal() {
+      const form = document.getElementById("novelForm");
+      form.reset();
+      form.elements.id.value = "";
+      document.getElementById("novelModalTitle").textContent = "작품 등록";
+      document.getElementById("novelSubmitButton").textContent = "공유 DB에 저장";
+      document.getElementById("deleteInModalButton").classList.add("hidden");
+      openModal("novelModal");
+    }
+
+    function fillNovelForm(novel) {
+      const form = document.getElementById("novelForm");
+      form.elements.id.value = novel.id || "";
+      form.elements.title.value = novel.title || "";
+      form.elements.platform.value = novel.platform || "";
+      form.elements.serialization.value = novel.serialization || "";
+      form.elements.genre.value = novel.genre || getGenre(novel.code);
+      form.elements.world.value = novel.world || getWorld(novel.code);
+      form.elements.setting.value = novel.settings?.[0] || "";
+      form.elements.character.value = novel.characters?.[0] || "";
+      form.elements.keywords.value = (novel.keywords || []).join(", ");
+      form.elements.description.value = novel.description || "";
+    }
+
+    function openNovelModal(id) {
+      const novel = novels.find(item => item.id === id);
+      if (!novel) return;
+
+      fillNovelForm(novel);
+      document.getElementById("novelModalTitle").textContent = "작품 상세 및 수정";
+      document.getElementById("novelSubmitButton").textContent = "수정 저장";
+      document.getElementById("deleteInModalButton").classList.remove("hidden");
+      openModal("novelModal");
+    }
+
+    function formToNovel(form) {
+      const data = new FormData(form);
+      return {
+        title: data.get("title"),
+        platform: data.get("platform"),
+        serialization: data.get("serialization"),
+        genre: data.get("genre"),
+        world: data.get("world"),
+        settings: [data.get("setting")],
+        characters: [data.get("character")],
+        keywords: String(data.get("keywords") || "").split(",").map(value => value.trim()).filter(Boolean),
+        description: data.get("description")
+      };
+    }
+
+    function normalizeCandidate(candidate) {
+      return {
+        title: candidate.title || "",
+        platform: candidate.platform || "",
+        serialization: candidate.serialization || "",
+        genre: candidate.genre || "",
+        world: candidate.world || "",
+        settings: candidate.settings || [],
+        characters: candidate.characters || [],
+        keywords: candidate.keywords || [],
+        description: candidate.description || "",
+        evidence: candidate.evidence || "",
+        sourceUrl: candidate.sourceUrl || ""
+      };
+    }
+
+    function renderAiCandidate(candidate) {
+      aiCandidate = normalizeCandidate(candidate);
+      const code = codeFrom(aiCandidate);
+      document.getElementById("aiResultCode").textContent = code;
+      document.getElementById("aiResultContent").innerHTML = `
+        <p><span class="font-semibold">작품명:</span> ${escapeHtml(aiCandidate.title || "미확인")}</p>
+        <p><span class="font-semibold">플랫폼:</span> ${escapeHtml(aiCandidate.platform || "미확인")}</p>
+        <p><span class="font-semibold">연재주기:</span> ${escapeHtml(aiCandidate.serialization || "미확인")}</p>
+        <p><span class="font-semibold">장르:</span> ${escapeHtml(genreMap[aiCandidate.genre] || aiCandidate.genre)}</p>
+        <p><span class="font-semibold">세계관:</span> ${escapeHtml(worldMap[aiCandidate.world] || aiCandidate.world)}</p>
+        <p><span class="font-semibold">핵심 설정:</span> ${escapeHtml((aiCandidate.settings || []).map(value => settingMap[value] || value).join(", "))}</p>
+        <p><span class="font-semibold">캐릭터:</span> ${escapeHtml((aiCandidate.characters || []).map(value => characterMap[value] || value).join(", "))}</p>
+        <p><span class="font-semibold">키워드:</span> ${escapeHtml((aiCandidate.keywords || []).join(", "))}</p>
+        <p class="md:col-span-2"><span class="font-semibold">설명:</span> ${escapeHtml(aiCandidate.description || "없음")}</p>
+      `;
+      document.getElementById("aiEvidence").textContent = aiCandidate.evidence ? `판단 근거: ${aiCandidate.evidence}` : "";
+      document.getElementById("aiResultBox").classList.remove("hidden");
+    }
+
+    async function analyzeWithAi() {
+      const button = document.getElementById("aiAnalyzeButton");
+      const url = document.getElementById("aiUrl").value.trim();
+      const text = document.getElementById("aiText").value.trim();
+
+      if (!url && !text) {
+        alert("작품 링크 또는 소개글을 입력해주세요.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "분류 중...";
+
+      try {
+        const response = await fetch("/api/ai/classify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, text })
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          alert(result.error || "AI 분류에 실패했습니다.");
+          return;
+        }
+
+        renderAiCandidate(result);
+      } finally {
+        button.disabled = false;
+        button.textContent = "AI 분류하기";
+      }
+    }
+
+    function sendAiCandidateToForm() {
+      if (!aiCandidate) return;
+      closeModal("aiModal");
+      openCreateModal();
+      fillNovelForm(aiCandidate);
+    }
+
+    async function saveAiCandidate() {
+      if (!aiCandidate) return;
+
+      const response = await fetch("/api/novels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiCandidate)
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || "AI 후보를 저장하지 못했습니다.");
+        return;
+      }
+
+      closeModal("aiModal");
+      document.getElementById("aiUrl").value = "";
+      document.getElementById("aiText").value = "";
+      document.getElementById("aiResultBox").classList.add("hidden");
+      aiCandidate = null;
+      await loadNovels();
+    }
+
+    async function submitNovel(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const id = form.elements.id.value;
+      const method = id ? "PUT" : "POST";
+      const url = id ? `/api/novels/${encodeURIComponent(id)}` : "/api/novels";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formToNovel(form))
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || "저장하지 못했습니다.");
+        return;
+      }
+
+      closeModal("novelModal");
+      await loadNovels();
+    }
+
+    async function deleteNovel(id) {
+      if (!confirm("정말 삭제하시겠습니까?")) return;
+      const response = await fetch(`/api/novels/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) {
+        alert("삭제하지 못했습니다.");
+        return;
+      }
+      closeModal("novelModal");
+      await loadNovels();
+    }
+
+    function parseCsvLine(line) {
+      const values = [];
+      let value = "";
+      let quoted = false;
+
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        const next = line[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          value += '"';
+          i += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === "," && !quoted) {
+          values.push(value);
+          value = "";
+        } else {
+          value += char;
+        }
+      }
+      values.push(value);
+      return values.map(item => item.trim());
+    }
+
+    async function uploadCsv(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(line => line.trim());
+      const headers = parseCsvLine(lines.shift()).map(header => header.trim());
+      const items = lines.map(line => {
+        const row = Object.fromEntries(parseCsvLine(line).map((value, index) => [headers[index], value]));
+        const genre = genreReverse[row.genre] || row.genre;
+        const world = worldReverse[row.world] || row.world;
+        const settings = String(row.setting || "").split("|").map(value => settingReverse[value.trim()] || value.trim()).filter(Boolean);
+        const characters = String(row.character || "").split("|").map(value => characterReverse[value.trim()] || value.trim()).filter(Boolean);
+
+        return {
+          title: row.title,
+          genre,
+          world,
+          settings,
+          characters,
+          keywords: String(row.keywords || "").split("|").map(value => value.trim()).filter(Boolean),
+          platform: row.platform || "",
+          serialization: row.serialization || "",
+          description: row.description || ""
+        };
+      });
+
+      const response = await fetch("/api/novels/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        alert(error.error || "CSV를 등록하지 못했습니다.");
+        return;
+      }
+
+      event.target.value = "";
+      closeModal("csvModal");
+      alert(`${items.length}건을 공유 DB에 등록했습니다.`);
+      await loadNovels();
+    }
+
+    function init() {
+      fillSelect(document.getElementById("genre"), genreMap, true);
+      fillSelect(document.getElementById("world"), worldMap, true);
+      fillCheckboxes(document.getElementById("settingChecks"), settingMap, "settingCheck");
+      fillCheckboxes(document.getElementById("characterChecks"), characterMap, "characterCheck");
+
+      fillSelect(document.querySelector('[name="genre"]'), genreMap);
+      fillSelect(document.querySelector('[name="world"]'), worldMap);
+      fillSelect(document.querySelector('[name="setting"]'), settingMap);
+      fillSelect(document.querySelector('[name="character"]'), characterMap);
+
+      document.getElementById("openCreateButton").addEventListener("click", openCreateModal);
+      document.getElementById("openCsvButton").addEventListener("click", () => openModal("csvModal"));
+      document.getElementById("openKeywordButton").addEventListener("click", () => openModal("keywordModal"));
+      document.getElementById("openAiButton").addEventListener("click", () => openModal("aiModal"));
+      document.querySelectorAll(".modalClose").forEach(button => button.addEventListener("click", () => closeModal("novelModal")));
+      document.querySelectorAll(".csvClose").forEach(button => button.addEventListener("click", () => closeModal("csvModal")));
+      document.querySelectorAll(".keywordClose").forEach(button => button.addEventListener("click", () => closeModal("keywordModal")));
+      document.querySelectorAll(".aiClose").forEach(button => button.addEventListener("click", () => closeModal("aiModal")));
+      document.getElementById("keywordRows").innerHTML = characterKeywordRows.map(row => `
+        <tr class="odd:bg-white even:bg-zinc-50">
+          <td class="border border-zinc-300 px-3 py-2">${escapeHtml(row.code)}</td>
+          <td class="border border-zinc-300 px-3 py-2">${escapeHtml(row.name)}</td>
+          <td class="border border-zinc-300 px-3 py-2">${escapeHtml(row.keywords)}</td>
+          <td class="border border-zinc-300 px-3 py-2">${escapeHtml(row.criteria)}</td>
+        </tr>
+      `).join("");
+      document.getElementById("searchButton").addEventListener("click", filterNovels);
+      document.getElementById("resetButton").addEventListener("click", resetFilters);
+      document.getElementById("keyword").addEventListener("input", filterNovels);
+      document.getElementById("novelForm").addEventListener("submit", submitNovel);
+      document.getElementById("csvInput").addEventListener("change", uploadCsv);
+      document.getElementById("aiAnalyzeButton").addEventListener("click", analyzeWithAi);
+      document.getElementById("aiSendToFormButton").addEventListener("click", sendAiCandidateToForm);
+      document.getElementById("aiSaveButton").addEventListener("click", saveAiCandidate);
+      document.getElementById("deleteInModalButton").addEventListener("click", () => {
+        const id = document.getElementById("novelForm").elements.id.value;
+        if (id) deleteNovel(id);
+      });
+
+      loadNovels().catch(error => {
+        setStatus(error.message, true);
+        renderNovels([]);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
